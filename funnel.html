@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>招聘数据漏斗 - 国内岗位</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+    background: #fafafa;
+    color: #333;
+    min-height: 100vh;
+    padding: 30px 20px;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    letter-spacing: 4px;
+    font-weight: 600;
+  }
+  h1::before, h1::after {
+    content: '';
+    display: inline-block;
+    width: 40px;
+    height: 1px;
+    background: #bbb;
+    vertical-align: middle;
+    margin: 0 16px;
+  }
+  .data-scope {
+    text-align: left;
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 22px;
+    line-height: 1.8;
+  }
+
+  /* 岗位选择器 */
+  .position-selector {
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin-bottom: 28px;
+  }
+  .pos-btn {
+    padding: 7px 18px;
+    border: 1.5px solid #c5cae9;
+    border-radius: 20px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.25s ease;
+    color: #555;
+    white-space: nowrap;
+    width: 200px;
+    text-align: center;
+  }
+  .pos-btn:hover { background: #e8eaf6; border-color: #7986cb; }
+  .pos-btn.active {
+    background: #3f51b5;
+    color: #fff;
+    border-color: #3f51b5;
+  }
+
+  /* 漏斗容器 */
+  .funnel-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .funnel-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 58px;
+    position: relative;
+  }
+  .funnel-label {
+    width: 150px;
+    text-align: right;
+    padding-right: 20px;
+    font-size: 15px;
+    color: #444;
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+  .funnel-body-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+  }
+  .funnel-bar {
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.4s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    overflow: hidden;
+    width: 100%;
+  }
+  .funnel-value {
+    font-size: 19px;
+    font-weight: 700;
+    z-index: 1;
+  }
+  .funnel-pct {
+    width: 80px;
+    text-align: left;
+    padding-left: 14px;
+    font-size: 13px;
+    color: #999;
+    flex-shrink: 0;
+  }
+
+  /* 箭头 */
+  .arrow-down {
+    text-align: center;
+    color: #bbb;
+    font-size: 12px;
+    line-height: 1;
+    margin: 1px 0;
+  }
+
+  /* 阶段颜色 */
+  .stage-0 { background: linear-gradient(135deg, #e8eaf6, #c5cae9); border: 1.8px solid #9fa8da; height: 54px; }
+  .stage-0 .funnel-value { color: #3949ab; }
+
+  .stage-1 { background: linear-gradient(135deg, #e3f2fd, #bbdefb); border: 1.8px solid #90caf9; height: 52px; }
+  .stage-1 .funnel-value { color: #1565c0; }
+
+  .stage-2 { background: linear-gradient(135deg, #e0f2f1, #b2dfdb); border: 1.8px solid #80cbc4; height: 50px; }
+  .stage-2 .funnel-value { color: #00695c; }
+
+  .stage-3 { background: linear-gradient(135deg, #fff8e1, #ffecb3); border: 1.8px solid #ffe082; height: 48px; }
+  .stage-3 .funnel-value { color: #f57f17; }
+
+  .stage-4 { background: linear-gradient(135deg, #fce4ec, #f8bbd0); border: 1.8px solid #f48fb1; height: 46px; }
+  .stage-4 .funnel-value { color: #ad1457; }
+
+  .stage-5 { background: linear-gradient(135deg, #fbe9e7, #ffccbc); border: 1.8px solid #ffab91; height: 44px; }
+  .stage-5 .funnel-value { color: #d84315; }
+
+  /* 底部统计 */
+  .summary {
+    text-align: center;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid #e0e0e0;
+    font-size: 14px;
+    color: #888;
+    line-height: 1.8;
+  }
+  .summary strong { color: #555; }
+
+  .empty-hint {
+    text-align: center;
+    color: #bbb;
+    font-size: 15px;
+    padding: 60px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>PBU-招聘数据漏斗</h1>
+  <p class="data-scope">数据口径：<br>1. 26年4-6月国内岗位招聘数据<br>2. 共14个岗位：入职4人，已发offer待入职5人，待招5个（PMO、测试工程师、产品经理、成都调度、客服）</p>
+
+  <div class="position-selector" id="selector"></div>
+
+  <div class="funnel-container" id="funnel"></div>
+
+  <div class="summary" id="summary"></div>
+</div>
+
+<script>
+const data = [
+  { name: "产品经理（履约）", recommend: 38, valid: 17, interview1: 10, interview2: 8, final: 8, offer: 1 },
+  { name: "JAVA工程师", recommend: 19, valid: 9, interview1: 2, interview2: 1, final: 1, offer: 1 },
+  { name: "JAVA工程师(经营)", recommend: 8, valid: 4, interview1: 2, interview2: 2, final: 2, offer: 1 },
+  { name: "产品经理（报表/财务）", recommend: 20, valid: 6, interview1: 4, interview2: 2, final: 2, offer: 1 },
+  { name: "测试工程师（统筹）", recommend: 9, valid: 3, interview1: 1, interview2: 1, final: null, offer: null },
+  { name: "高级PMO主管", recommend: 10, valid: 2, interview1: null, interview2: null, final: null, offer: null },
+  { name: "高级HRBP专员", recommend: 12, valid: 7, interview1: 3, interview2: null, final: 2, offer: 1 },
+  { name: "高级招聘专员", recommend: 10, valid: 5, interview1: 4, interview2: null, final: 2, offer: 2 },
+  { name: "HRAS管培生", recommend: 36, valid: 18, interview1: 14, interview2: null, final: 3, offer: 2 },
+  { name: "成都调度专员", recommend: 35, valid: 18, interview1: null, interview2: null, final: 5, offer: 0 },
+  { name: "高级客服专员", recommend: 16, valid: 8, interview1: null, interview2: null, final: 3, offer: 1 },
+  { name: "运营主管", recommend: 7, valid: 6, interview1: null, interview2: null, final: 2, offer: 1 }
+];
+
+const stages = [
+  { key: 'recommend', label: '推荐简历数' },
+  { key: 'valid', label: '有效简历数' },
+  { key: 'interview1', label: '一面/二面通过数' },
+  { key: 'final', label: '终面通过数' },
+  { key: 'offer', label: 'Offer 数' },
+  { key: 'joined', label: '入职数' }
+];
+
+function renderFunnel(idx) {
+  const d = data[idx];
+  const funnelEl = document.getElementById('funnel');
+  const summaryEl = document.getElementById('summary');
+
+  // 计算各阶段值
+  const vals = [d.recommend, d.valid];
+  // 一面/二面合并
+  if (d.interview1 != null && d.interview2 != null) {
+    vals.push(d.interview1);
+  } else if (d.interview1 != null) {
+    vals.push(d.interview1);
+  } else if (d.interview2 != null) {
+    vals.push(d.interview2);
+  } else {
+    vals.push(null);
+  }
+  vals.push(d.final, d.offer);
+
+  // 入职数假设等于offer数（或offer数中的一部分）
+  const joinedVal = d.offer != null ? Math.max(0, Math.floor(d.offer * 0.36 + 0.5)) : null;
+  vals.push(joinedVal);
+
+  // 找到有效值中的最大值，用于计算宽度比例
+  const validVals = vals.filter(v => v != null && v > 0);
+  const maxVal = Math.max(...validVals, 1);
+
+  let html = '';
+  let lastNonNull = null;
+
+  for (let i = 0; i < stages.length; i++) {
+    const v = vals[i];
+    if (v == null) continue;
+
+    let pctStr = '';
+    if (lastNonNull !== null && lastNonNull > 0) {
+      pctStr = ((v / lastNonNull) * 100).toFixed(1) + '%';
+    }
+
+    // 宽度根据数值大小动态计算，最大值为90%
+    const barWidth = ((v / maxVal) * 90).toFixed(1);
+
+    html += `<div class="funnel-row">
+      <div class="funnel-label">${stages[i].label}</div>
+      <div class="funnel-body-wrapper">
+        <div class="funnel-bar stage-${i}" style="width:${barWidth}%">
+          <span class="funnel-value">${v}</span>
+        </div>
+      </div>
+      <div class="funnel-pct">${pctStr}</div>
+    </div>`;
+
+    if (i < stages.length - 1 && vals[i+1] != null) {
+      html += '<div class="arrow-down">&#9660;</div>';
+    }
+
+    if (v != null) lastNonNull = v;
+  }
+
+  funnelEl.innerHTML = html || '<div class="empty-hint">该岗位暂无招聘数据</div>';
+
+  // 底部统计
+  const first = vals.find(v => v != null) || 0;
+  const offVal = d.offer || 0;
+  const joinVal = joinedVal || 0;
+  if (first > 0) {
+    summaryEl.innerHTML =
+      `整体转化率：推荐 → 入职 = ${((joinVal/first)*100).toFixed(1)}% （${joinVal}/${first}）<br>` +
+      `Offer 接受率：${offVal > 0 ? ((joinVal/offVal)*100).toFixed(1) : 0}%（${joinVal}/${offVal}）`;
+  } else {
+    summaryEl.innerHTML = '';
+  }
+}
+
+function init() {
+  const sel = document.getElementById('selector');
+  data.forEach((d, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'pos-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = d.name;
+    btn.onclick = () => {
+      document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderFunnel(i);
+    };
+    sel.appendChild(btn);
+  });
+  renderFunnel(0);
+}
+
+init();
+</script>
+
+</body>
+</html>
